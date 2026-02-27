@@ -29,9 +29,9 @@ def validate_student_data(data):
     if not re.match(r'^[A-Za-z0-9]+$', data['register_number'].strip()):
         return False, "Register number should be alphanumeric"
     
-    # Validate section (alphanumeric)
-    if not re.match(r'^[A-Za-z0-9]+$', data['section'].strip()):
-        return False, "Section should be alphanumeric"
+    # Validate section (alphanumeric, hyphens, spaces allowed — e.g. S-01, CS-A)
+    if not re.match(r'^[A-Za-z0-9\s\-]+$', data['section'].strip()):
+        return False, "Section should contain only letters, numbers, hyphens, or spaces"
     
     return True, None
 
