@@ -1,0 +1,84 @@
+# ========================================
+# VERCEL ENVIRONMENT VARIABLES
+# ========================================
+# Copy these EXACT values into Vercel Dashboard
+# Go to: Environment Variables section
+# ========================================
+
+# REQUIRED - Flask Secret Key (Already Generated)
+# ========================================
+SECRET_KEY=49f34ee55cce33136be3bfc245d567de2517c96c4044734fe184c934cc29329b
+
+
+# OPTIONAL - Flask Environment
+# ========================================
+FLASK_ENV=production
+
+
+# OPTIONAL - PostgreSQL Database (Recommended for Production)
+# ========================================
+# Leave empty to use SQLite (data won't persist on Vercel)
+# To add PostgreSQL:
+# 1. Create free database at: https://supabase.com OR https://neon.tech OR https://railway.app
+# 2. Copy the connection string
+# 3. Paste it below and add to Vercel
+# 
+# DATABASE_URL=postgresql://user:password@host:port/database
+DATABASE_URL=
+
+
+# ========================================
+# HOW TO ADD TO VERCEL:
+# ========================================
+# 1. In Vercel deployment page, click "Environment Variables"
+# 2. Add each variable:
+#    - Key: SECRET_KEY
+#    - Value: 49f34ee55cce33136be3bfc245d567de2517c96c4044734fe184c934cc29329b
+#    - Environment: Production, Preview, Development
+# 
+# 3. (Optional) Add DATABASE_URL if you created PostgreSQL database
+#    - Key: DATABASE_URL
+#    - Value: (your PostgreSQL connection string)
+#    - Environment: Production, Preview, Development
+#
+# 4. Click "Deploy"
+# ========================================
+
+
+# ========================================
+# QUICK COPY-PASTE FOR VERCEL:
+# ========================================
+
+Key: SECRET_KEY
+Value: 49f34ee55cce33136be3bfc245d567de2517c96c4044734fe184c934cc29329b
+
+Key: FLASK_ENV
+Value: production
+
+# (Optional) If you have PostgreSQL:
+# Key: DATABASE_URL
+# Value: (paste your PostgreSQL connection string here)
+
+
+# ========================================
+# FREE POSTGRESQL PROVIDERS:
+# ========================================
+# 
+# Option 1: Supabase (Recommended)
+# - URL: https://supabase.com
+# - Free tier: 500MB database
+# - Setup time: 2 minutes
+# - After creating project, go to Settings → Database → Copy "Connection String (URI)"
+#
+# Option 2: Neon
+# - URL: https://neon.tech
+# - Free tier: 3GB storage
+# - Serverless PostgreSQL
+# - Copy connection string after creating project
+#
+# Option 3: Railway
+# - URL: https://railway.app
+# - Free tier: 512MB RAM
+# - Create PostgreSQL database → Copy connection string
+#
+# ========================================

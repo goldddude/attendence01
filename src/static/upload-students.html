@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Students - TapSyncPro</title>
+    <link rel="stylesheet" href="css/styles-pro.css">
+    <style>
+        .file-upload {
+            border: 2px dashed var(--border);
+            padding: 3rem;
+            text-align: center;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .file-upload:hover {
+            border-color: var(--primary);
+            background: var(--primary-subtle);
+        }
+
+        .file-upload.drag-over {
+            border-color: var(--primary);
+            background: var(--primary-subtle);
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="index.html" class="logo">
+                    <div class="logo-icon">⚡</div>
+                    <span>TapSyncPro</span>
+                </a>
+                <nav class="nav">
+                    <a href="index.html" class="nav-link">Overview</a>
+                    <a href="dashboard.html" class="nav-link">Dashboard</a>
+                    <a href="students.html" class="nav-link active">Students</a>
+                    <a href="scan-attendance.html" class="nav-link">Scan</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <div style="margin-bottom: 2rem;">
+                <a href="students.html" style="color: var(--primary); text-decoration: none; font-weight: 500;">
+                    ← Back to Students
+                </a>
+            </div>
+
+            <h1 style="margin-bottom: 0.5rem;">📤 Upload Students</h1>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Bulk import student data from Excel or CSV
+                files</p>
+
+            <div class="grid grid-2">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Upload File</h3>
+                        <p class="card-subtitle">Excel (.xlsx, xls) or CSV format</p>
+                    </div>
+
+                    <div class="file-upload" id="file-upload">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">📁</div>
+                        <h3>Drop your file here</h3>
+                        <p style="color: var(--text-secondary); margin-top: 0.5rem;">or click to browse</p>
+                        <p style="color: var(--text-muted); font-size: 0.875rem; margin-top: 1rem;">
+                            Supported: .xlsx, .xls, .csv
+                        </p>
+                        <input type="file" id="file-input" accept=".xlsx,.xls,.csv" style="display: none;">
+                    </div>
+
+                    <div id="file-info" class="hidden" style="margin-top: 1rem;">
+                        <div class="alert alert-info">
+                            <div>
+                                <strong>Selected File:</strong>
+                                <p style="margin-top: 0.5rem; font-family: monospace;" id="file-name"></p>
+                            </div>
+                        </div>
+                        <button onclick="uploadFile()" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                            🚀 Upload and Import
+                        </button>
+                    </div>
+
+                    <div id="upload-result" style="margin-top: 1rem;"></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Excel Template Format</h3>
+                        <p class="card-subtitle">Required columns (exact names)</p>
+                    </div>
+
+                    <div style="margin-bottom: 1.5rem;">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Column Name</th>
+                                    <th>Required</th>
+                                    <th>Example</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>name</code></td>
+                                    <td><span class="badge badge-error">Yes</span></td>
+                                    <td>John Doe</td>
+                                </tr>
+                                <tr>
+                                    <td><code>register_number</code></td>
+                                    <td><span class="badge badge-error">Yes</span></td>
+                                    <td>2024CS001</td>
+                                </tr>
+                                <tr>
+                                    <td><code>section</code></td>
+                                    <td><span class="badge badge-error">Yes</span></td>
+                                    <td>A</td>
+                                </tr>
+                                <tr>
+                                    <td><code>department</code></td>
+                                    <td><span class="badge badge-error">Yes</span></td>
+                                    <td>Computer Science</td>
+                                </tr>
+                                <tr>
+                                    <td><code>duration</code></td>
+                                    <td><span class="badge badge-error">Yes</span></td>
+                                    <td>Year 1 or 2021-2025</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <div>
+                            <strong>⚠ Important Notes:</strong>
+                            <ul style="margin-top: 0.5rem; padding-left: 1.5rem;">
+                                <li>Column names are case-insensitive</li>
+                                <li>Spaces in column names will be converted to underscores</li>
+                                <li>Register numbers must be unique</li>
+                                <li>Duplicate students will be skipped</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 1.5rem;">
+                        <h4 style="margin-bottom: 0.75rem;">Example Excel Format:</h4>
+                        <div
+                            style="background: var(--bg-secondary); padding: 1rem; font-family: monospace; font-size: 0.8rem; overflow-x: auto;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <tr style="background: var(--bg-hover);">
+                                    <td style="padding: 0.5rem; border: 1px solid var(--border);">name</td>
+                                    <td style="padding: 0.5rem; border: 1px solid var(--border);">register_number</td>
+                                    <td style="padding: 0.5rem; border: 1px solid var(--border);">section</td>
+                                    <td style="padding: 0.5rem; border: 1px solid var(--border);">department</td>
+                                    <td style="padding: 0.5rem; border: 1px solid var(--border);">duration</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 0.5rem; border: 1px solid var(--border);">John Doe</td>
+                                    <td style="padding: 0.5rem; border: 1px solid var(--border);">2024CS001</td>
+                                    <td style="padding: 0.5rem; border: 1px solid var(--border);">A</td>
+                                    <td style="padding: 0.5rem; border: 1px solid var(--border);">Computer Science</td>
+                                    <td style="padding: 0.5rem; border: 1px solid var(--border);">Year 1</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 0.5rem; border: 1px solid var(--border);">Jane Smith</td>
+                                    <td style="padding: 0.5rem; border: 1px solid var(--border);">2024CS002</td>
+                                    <td style="padding: 0.5rem; border: 1px solid var(--border);">A</td>
+                                    <td style="padding: 0.5rem; border: 1px solid var(--border);">Computer Science</td>
+                                    <td style="padding: 0.5rem; border: 1px solid var(--border);">Year 1</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/app.js"></script>
+    <script>
+        const fileUpload = document.getElementById('file-upload');
+        const fileInput = document.getElementById('file-input');
+        const fileInfo = document.getElementById('file-info');
+        let selectedFile = null;
+
+        // Click to browse
+        fileUpload.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // File selection
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                selectedFile = e.target.files[0];
+                document.getElementById('file-name').textContent = selectedFile.name;
+                fileInfo.classList.remove('hidden');
+            }
+        });
+
+        // Drag and drop
+        fileUpload.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileUpload.classList.add('drag-over');
+        });
+
+        fileUpload.addEventListener('dragleave', () => {
+            fileUpload.classList.remove('drag-over');
+        });
+
+        fileUpload.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileUpload.classList.remove('drag-over');
+
+            if (e.dataTransfer.files.length > 0) {
+                selectedFile = e.dataTransfer.files[0];
+                document.getElementById('file-name').textContent = selectedFile.name;
+                fileInfo.classList.remove('hidden');
+            }
+        });
+
+        async function uploadFile() {
+            if (!selectedFile) return;
+
+            const resultDiv = document.getElementById('upload-result');
+            resultDiv.innerHTML = `
+                <div class="loading-container">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 1rem; color: var(--text-secondary);">Uploading and processing...</p>
+                </div>
+            `;
+
+            try {
+                const result = await APIClient.uploadStudents(selectedFile);
+
+                let html = `
+                    <div class="alert alert-success">
+                        <div>
+                            <strong>✓ Upload Complete!</strong>
+                            <p style="margin-top: 0.5rem;">
+                                ${result.success_count} students added successfully
+                                ${result.failed_count > 0 ? `, ${result.failed_count} failed` : ''}
+                            </p>
+                        </div>
+                    </div>
+                `;
+
+                if (result.errors && result.errors.length > 0) {
+                    html += `
+                        <div class="card" style="margin-top: 1rem;">
+                            <div class="card-header">
+                                <h4 class="card-title">❌ Errors (${result.errors.length})</h4>
+                            </div>
+                            <div style="max-height: 300px; overflow-y: auto;">
+                                ${result.errors.map(err => `
+                                    <div style="padding: 0.75rem; background: var(--bg-hover); margin-bottom: 0.5rem;">
+                                        <strong>Row ${err.row}:</strong> ${err.register_number}<br>
+                                        <span style="color: var(--error); font-size: 0.875rem;">${err.error}</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                html += `
+                    <div style="margin-top: 1rem;">
+                        <a href="students.html" class="btn btn-primary" style="width: 100%;">
+                            View All Students
+                        </a>
+                    </div>
+                `;
+
+                resultDiv.innerHTML = html;
+
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-error">
+                        <div>
+                            <strong>✗ Upload Failed</strong>
+                            <p style="margin-top: 0.5rem;">${error.message || error}</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Profile - TapSyncPro</title>
+    <link rel="stylesheet" href="css/styles-pro.css">
+</head>
+
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="index.html" class="logo">
+                    <div class="logo-icon">⚡</div>
+                    <span>TapSyncPro</span>
+                </a>
+                <nav class="nav">
+                    <a href="index.html" class="nav-link">Overview</a>
+                    <a href="dashboard.html" class="nav-link">Dashboard</a>
+                    <a href="students.html" class="nav-link active">Students</a>
+                    <a href="scan-attendance.html" class="nav-link">Scan</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <div style="margin-bottom: 2rem;">
+                <a href="students.html" style="color: var(--primary); text-decoration: none; font-weight: 500;">
+                    ← Back to Students
+                </a>
+            </div>
+
+            <div id="alert-container"></div>
+
+            <div id="profile-container">
+                <div class="loading-container">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/app.js"></script>
+    <script src="js/nfc-handler.js"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const studentId = urlParams.get('id');
+        let currentStudent = null;
+        let nfcHandler = null;
+
+        function showAlert(message, type = 'success') {
+            const container = document.getElementById('alert-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.innerHTML = `
+                <div>
+                    <strong>${type === 'success' ? '✓ Success!' : '✗ Error!'}</strong>
+                    <p style="margin-top: 0.25rem;">${message}</p>
+                </div>
+            `;
+            container.innerHTML = '';
+            container.appendChild(alert);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            if (type === 'success') {
+                setTimeout(() => alert.remove(), 5000);
+            }
+        }
+
+        async function loadStudent() {
+            if (!studentId) {
+                document.getElementById('profile-container').innerHTML = `
+                    <div class="alert alert-error">
+                        <div><strong>Error:</strong> No student ID provided</div>
+                    </div>
+                `;
+                return;
+            }
+
+            try {
+                const data = await APIClient.getStudent(studentId);
+                currentStudent = data.student;
+                displayProfile(currentStudent);
+                loadAttendance(studentId);
+            } catch (error) {
+                document.getElementById('profile-container').innerHTML = `
+                    <div class="alert alert-error">
+                        <div>
+                            <strong>Error loading student</strong>
+                            <p style="margin-top: 0.5rem;">${error.message}</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function displayProfile(student) {
+            const container = document.getElementById('profile-container');
+
+            const html = `
+                <div class="grid grid-3" style="margin-bottom: 1.5rem;">
+                    <div class="card" style="grid-column: span 2;">
+                        <div class="card-header">
+                            <h2 class="card-title">${student.name}</h2>
+                            <p class="card-subtitle">Register Number: ${student.register_number}</p>
+                        </div>
+                        <div class="grid grid-2" style="gap: 1.5rem;">
+                            <div>
+                                <div style="margin-bottom: 1rem;">
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Section</label>
+                                    <div style="font-size: 1.125rem; font-weight: 600;">${student.section}</div>
+                                </div>
+                                <div style="margin-bottom: 1rem;">
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Department</label>
+                                    <div style="font-size: 1.125rem; font-weight: 600;">${student.department}</div>
+                                </div>
+                            </div>
+                            <div>
+                                <div style="margin-bottom: 1rem;">
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Duration</label>
+                                    <div style="font-size: 1.125rem; font-weight: 600;">${student.duration}</div>
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em;">Member Since</label>
+                                    <div style="font-size: 1.125rem; font-weight: 600;">${new Date(student.created_at).toLocaleDateString()}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">NFC Registration</h3>
+                        </div>
+                        <div id="nfc-status-container">
+                            ${student.nfc_tag_id ? `
+                                <div class="alert alert-success" style="margin-bottom: 1rem;">
+                                    <div>
+                                        <strong>✓ NFC Registered</strong>
+                                        <p style="margin-top: 0.5rem; font-family: monospace; font-size: 0.8rem;">${student.nfc_tag_id}</p>
+                                    </div>
+                                </div>
+                                <button onclick="unregisterNFC()" class="btn btn-danger" style="width: 100%;">
+                                    Remove NFC Tag
+                                </button>
+                            ` : `
+                                <div class="alert alert-warning" style="margin-bottom: 1rem;">
+                                    <div>
+                                        <strong>⚠ No NFC Tag</strong>
+                                        <p style="margin-top: 0.5rem;">Register an NFC card to enable scanning</p>
+                                    </div>
+                                </div>
+                                <button onclick="startNFCRegistration()" class="btn btn-primary" style="width: 100%;">
+                                    📱 Register NFC Tag
+                                </button>
+                            `}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Recent Attendance</h3>
+                        <p class="card-subtitle">Last 10 attendance records</p>
+                    </div>
+                    <div id="attendance-container">
+                        <div class="loading-container">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        async function startNFCRegistration() {
+            // Check if NFC is supported
+            if (!('NDEFReader' in window)) {
+                showAlert('NFC is not supported. Make sure you are using Chrome on Android and NFC is enabled.', 'error');
+                return;
+            }
+
+            nfcHandler = new NFCHandler();
+
+            showAlert('Ready to scan! Tap the NFC card near your device...', 'info');
+
+            try {
+                await nfcHandler.readTag(
+                    async (tagData) => {
+                        try {
+                            const result = await APIClient.registerNFC(studentId, tagData.tagId);
+                            showAlert('NFC tag registered successfully!', 'success');
+
+                            // Reload student data
+                            setTimeout(() => {
+                                loadStudent();
+                            }, 1000);
+
+                        } catch (error) {
+                            showAlert(error.message, 'error');
+                        }
+                    },
+                    (error) => {
+                        showAlert('NFC scan failed: ' + error.message, 'error');
+                    }
+                );
+            } catch (error) {
+                showAlert('Failed to start NFC scan: ' + error.message, 'error');
+            }
+        }
+
+        async function unregisterNFC() {
+            if (!confirm('Remove NFC tag registration from this student?')) {
+                return;
+            }
+
+            try {
+                // Register with empty tag ID to unregister
+                await APIClient.registerNFC(studentId, '');
+                showAlert('NFC tag removed successfully', 'success');
+                loadStudent();
+            } catch (error) {
+                showAlert('Failed to remove NFC tag', 'error');
+            }
+        }
+
+        async function loadAttendance(studentId) {
+            const container = document.getElementById('attendance-container');
+
+            try {
+                const data = await APIClient.getStudentAttendance(studentId, 10);
+
+                if (data.attendance.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                            <div style="font-size: 2rem; margin-bottom: 0.5rem;">📊</div>
+                            <p>No attendance records yet</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const tableHtml = `
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Date & Time</th>
+                                    <th>Recorded By</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.attendance.map(record => `
+                                    <tr>
+                                        <td><strong>${UI.formatDate(record.timestamp)}</strong></td>
+                                        <td>${record.recorded_by}</td>
+                                        <td><span class="badge badge-success">Present</span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+
+                container.innerHTML = tableHtml;
+
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="alert alert-error">
+                        <div><strong>Error loading attendance:</strong> ${error.message}</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Load student on page load
+        loadStudent();
+    </script>
+</body>
+
+</html>

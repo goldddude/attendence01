@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faculty Login - TapSyncPro</title>
+    <meta name="description" content="Faculty login for TapSyncPro attendance system">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles-pro.css">
+</head>
+
+<body>
+    <div class="main"
+        style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem;">
+        <div class="container" style="max-width: 500px;">
+            <!-- Logo -->
+            <div style="text-align: center; margin-bottom: 3rem;">
+                <div style="font-size: 4rem; margin-bottom: 1rem;">⚡</div>
+                <h1
+                    style="background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 0.5rem;">
+                    TapSyncPro
+                </h1>
+                <p style="color: var(--text-secondary);">Faculty Login</p>
+            </div>
+
+            <!-- Login Form -->
+            <div class="card" id="login-form">
+                <div class="card-header">
+                    <h3 class="card-title">Sign In</h3>
+                    <p class="card-subtitle">Enter your details to receive OTP</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Full Name *</label>
+                    <input type="text" id="faculty-name" class="form-input" placeholder="Enter your full name" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Email Address *</label>
+                    <input type="email" id="faculty-email" class="form-input" placeholder="Enter your email" required>
+                </div>
+
+                <button onclick="requestOTP()" class="btn btn-primary" style="width: 100%;">
+                    📧 Send OTP
+                </button>
+            </div>
+
+            <!-- OTP Verification Form -->
+            <div class="card hidden" id="otp-form">
+                <div class="card-header">
+                    <h3 class="card-title">Verify OTP</h3>
+                    <p class="card-subtitle">Enter the 6-digit code sent to your email</p>
+                </div>
+
+                <div class="alert alert-info" id="otp-display" style="margin-bottom: 1.5rem;">
+                    <strong>Your OTP:</strong> <span id="otp-code"
+                        style="font-size: 1.5rem; letter-spacing: 0.2em;">------</span>
+                    <br><small style="color: var(--text-secondary);">In production, this would be sent to your
+                        email</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Enter OTP *</label>
+                    <input type="text" id="otp-input" class="form-input" placeholder="Enter 6-digit OTP" maxlength="6"
+                        style="font-size: 1.5rem; letter-spacing: 0.5em; text-align: center;">
+                </div>
+
+                <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="remember-me" style="width: 18px; height: 18px; cursor: pointer;">
+                        <span>Remember me for 30 days</span>
+                    </label>
+                </div>
+
+                <div style="display: flex; gap: 1rem;">
+                    <button onclick="backToLogin()" class="btn btn-secondary" style="flex: 1;">
+                        ← Back
+                    </button>
+                    <button onclick="verifyOTP()" class="btn btn-primary" style="flex: 2;">
+                        ✓ Verify & Login
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        let currentEmail = '';
+        let currentName = '';
+        let generatedOTP = '';
+
+        // Check for remember token on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            checkRememberToken();
+        });
+
+        async function checkRememberToken() {
+            const savedEmail = localStorage.getItem('faculty_email');
+            const savedToken = localStorage.getItem('remember_token');
+
+            if (savedEmail && savedToken) {
+                try {
+                    const response = await fetch('/api/faculty/verify-token', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: savedEmail,
+                            token: savedToken
+                        })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        // Store faculty info and redirect
+                        sessionStorage.setItem('faculty_info', JSON.stringify(data.faculty));
+                        window.location.href = 'scan-attendance.html';
+                    } else {
+                        // Token expired or invalid, clear storage
+                        localStorage.removeItem('faculty_email');
+                        localStorage.removeItem('remember_token');
+                    }
+                } catch (error) {
+                    console.error('Token verification failed:', error);
+                }
+            }
+        }
+
+        async function requestOTP() {
+            currentName = document.getElementById('faculty-name').value.trim();
+            currentEmail = document.getElementById('faculty-email').value.trim();
+
+            if (!currentName) {
+                UI.showAlert('Please enter your name', 'error');
+                return;
+            }
+
+            if (!currentEmail) {
+                UI.showAlert('Please enter your email', 'error');
+                return;
+            }
+
+            // Basic email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(currentEmail)) {
+                UI.showAlert('Please enter a valid email address', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/faculty/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: currentName,
+                        email: currentEmail
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    generatedOTP = data.otp;
+                    document.getElementById('otp-code').textContent = generatedOTP;
+
+                    // Show OTP form, hide login form
+                    document.getElementById('login-form').classList.add('hidden');
+                    document.getElementById('otp-form').classList.remove('hidden');
+
+                    UI.showAlert('OTP sent successfully!', 'success');
+                } else {
+                    UI.showAlert(data.error || 'Failed to send OTP', 'error');
+                }
+            } catch (error) {
+                UI.showAlert('Network error. Please try again.', 'error');
+                console.error('Error:', error);
+            }
+        }
+
+        async function verifyOTP() {
+            const otpInput = document.getElementById('otp-input').value.trim();
+            const rememberMe = document.getElementById('remember-me').checked;
+
+            if (!otpInput) {
+                UI.showAlert('Please enter the OTP', 'error');
+                return;
+            }
+
+            if (otpInput.length !== 6) {
+                UI.showAlert('OTP must be 6 digits', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/faculty/verify-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: currentEmail,
+                        otp: otpInput,
+                        remember_me: rememberMe
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Store faculty info in session
+                    sessionStorage.setItem('faculty_info', JSON.stringify(data.faculty));
+
+                    // If remember me, store token
+                    if (rememberMe && data.remember_token) {
+                        localStorage.setItem('faculty_email', currentEmail);
+                        localStorage.setItem('remember_token', data.remember_token);
+                    }
+
+                    UI.showAlert('Login successful! Redirecting...', 'success');
+
+                    // Redirect to scan page
+                    setTimeout(() => {
+                        window.location.href = 'scan-attendance.html';
+                    }, 1000);
+                } else {
+                    UI.showAlert(data.error || 'Invalid OTP', 'error');
+                }
+            } catch (error) {
+                UI.showAlert('Network error. Please try again.', 'error');
+                console.error('Error:', error);
+            }
+        }
+
+        function backToLogin() {
+            document.getElementById('login-form').classList.remove('hidden');
+            document.getElementById('otp-form').classList.add('hidden');
+            document.getElementById('otp-input').value = '';
+        }
+
+        // Allow Enter key to submit
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                if (!document.getElementById('login-form').classList.contains('hidden')) {
+                    requestOTP();
+                } else if (!document.getElementById('otp-form').classList.contains('hidden')) {
+                    verifyOTP();
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>

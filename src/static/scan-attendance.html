@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan Attendance - TapSyncPro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles-pro.css">
+</head>
+
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="index.html" class="logo">
+                    <div class="logo-icon">⚡</div>
+                    <span>TapSyncPro</span>
+                </a>
+                <nav class="nav">
+                    <a href="index.html" class="nav-link">Overview</a>
+                    <a href="dashboard.html" class="nav-link">Dashboard</a>
+                    <a href="students.html" class="nav-link">Students</a>
+                    <a href="scan-attendance.html" class="nav-link active">Scan</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <div class="flex-between mb-3">
+                <h1>📱 Scan Attendance</h1>
+                <button onclick="logout()" class="btn btn-secondary">🚪 Logout</button>
+            </div>
+
+            <!-- Faculty Info Display -->
+            <div class="card mb-3" id="faculty-info-card">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div
+                        style="width: 50px; height: 50px; border-radius: 50%; background: var(--primary); color: var(--bg-primary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700;">
+                        <span id="faculty-initial">?</span>
+                    </div>
+                    <div style="flex: 1;">
+                        <strong id="faculty-name-display">Loading...</strong><br>
+                        <span class="text-secondary" id="faculty-email-display"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Session Configuration -->
+            <div class="card mb-3" id="session-config">
+                <div class="card-header">
+                    <h3 class="card-title">Session Configuration</h3>
+                    <p class="card-subtitle">Configure attendance session details</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Section *</label>
+                    <select id="section-select" class="form-input">
+                        <option value="">Select Section</option>
+                        <option value="S-01">S-01</option>
+                        <option value="S-02">S-02</option>
+                        <option value="S-03">S-03</option>
+                        <option value="S-04">S-04</option>
+                        <option value="S-05">S-05</option>
+                        <option value="S-06">S-06</option>
+                        <option value="S-07">S-07</option>
+                        <option value="S-08">S-08</option>
+                        <option value="S-09">S-09</option>
+                        <option value="S-10">S-10</option>
+                        <option value="S-11">S-11</option>
+                        <option value="S-12">S-12</option>
+                        <option value="S-13">S-13</option>
+                        <option value="S-14">S-14</option>
+                        <option value="S-15">S-15</option>
+                        <option value="S-16">S-16</option>
+                        <option value="S-17">S-17</option>
+                        <option value="S-18">S-18</option>
+                        <option value="S-19">S-19</option>
+                        <option value="S-20">S-20</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Subject *</label>
+                    <select id="subject-select" class="form-input">
+                        <option value="">Select Subject</option>
+                        <option value="Operating System">Operating System</option>
+                        <option value="Engineering Mathematics">Engineering Mathematics</option>
+                        <option value="Computer Networks">Computer Networks</option>
+                        <option value="DAA">Design and Analysis of Algorithms (DAA)</option>
+                        <option value="ACD">Advanced Computer Design (ACD)</option>
+                        <option value="DSA">Data Structures and Algorithms (DSA)</option>
+                        <option value="Java">Java Programming</option>
+                        <option value="Python">Python Programming</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Date *</label>
+                    <input type="date" id="date-select" class="form-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Class Time *</label>
+                    <select id="time-select" class="form-input">
+                        <option value="">Select Class Time</option>
+                        <option value="09:00-09:50">09:00 AM - 09:50 AM</option>
+                        <option value="10:00-10:50">10:00 AM - 10:50 AM</option>
+                        <option value="11:00-11:50">11:00 AM - 11:50 AM</option>
+                        <option value="12:00-12:50">12:00 PM - 12:50 PM</option>
+                        <option value="13:00-13:50">01:00 PM - 01:50 PM</option>
+                        <option value="14:00-14:50">02:00 PM - 02:50 PM</option>
+                        <option value="15:00-15:50">03:00 PM - 03:50 PM</option>
+                        <option value="16:00-16:50">04:00 PM - 04:50 PM</option>
+                    </select>
+                </div>
+
+                <button onclick="startScanning()" class="btn btn-primary" style="width: 100%;">
+                    🚀 Start Scanning
+                </button>
+            </div>
+
+            <!-- NFC Scan Area -->
+            <div id="scan-section" class="hidden">
+                <!-- Session Info -->
+                <div class="card mb-3"
+                    style="background: linear-gradient(135deg, rgba(74, 222, 128, 0.1) 0%, var(--bg-card) 100%); border: 2px solid var(--primary);">
+                    <div
+                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; align-items: center;">
+                        <div>
+                            <strong>Section:</strong> <span id="current-section" class="badge badge-success">-</span>
+                        </div>
+                        <div>
+                            <strong>Subject:</strong> <span id="current-subject" class="badge badge-info">-</span>
+                        </div>
+                        <div>
+                            <strong>Date:</strong> <span id="current-date" class="badge badge-info">-</span>
+                        </div>
+                        <div>
+                            <strong>Time:</strong> <span id="current-time" class="badge badge-info">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-3"
+                    style="background: linear-gradient(135deg, rgba(74, 222, 128, 0.1) 0%, var(--bg-card) 100%); border: 2px solid var(--primary);">
+                    <div style="text-align: center; padding: 3rem 1rem;">
+                        <div style="font-size: 4rem; margin-bottom: 1rem; animation: pulse 2s ease-in-out infinite;">
+                            📱
+                        </div>
+                        <h2 style="color: var(--primary); margin-bottom: 0.5rem;">Ready to Scan</h2>
+                        <div class="nfc-status" id="scan-status"
+                            style="font-size: 1.1rem; color: var(--text-secondary);">
+                            Tap an NFC card near your device
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 mb-3">
+                    <button onclick="stopScanning()" class="btn btn-secondary" style="flex: 1;">
+                        ⏸️ Stop Scanning
+                    </button>
+                    <button onclick="clearLog()" class="btn btn-secondary" style="flex: 1;">
+                        🗑️ Clear Log
+                    </button>
+                </div>
+
+                <!-- Scan Log -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Scan Log</h3>
+                        <p class="card-subtitle">Recent scans will appear here</p>
+                    </div>
+                    <div id="scan-log">
+                        <p class="text-secondary text-center" style="padding: 2rem;">
+                            No scans yet. Start tapping ID cards to record attendance.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <style>
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.1);
+                opacity: 0.8;
+            }
+        }
+    </style>
+
+    <script src="js/app.js"></script>
+    <script src="js/nfc-handler.js"></script>
+    <script>
+        let nfcHandler = null;
+        let facultyInfo = null;
+        let currentSection = '';
+        let currentSubject = '';
+        let currentDate = '';
+        let currentTime = '';
+        let scanLog = [];
+
+        // Check authentication on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            checkAuthentication();
+        });
+
+        function checkAuthentication() {
+            const storedInfo = sessionStorage.getItem('faculty_info');
+
+            if (!storedInfo) {
+                // Not logged in, redirect to login
+                window.location.href = 'login.html';
+                return;
+            }
+
+            facultyInfo = JSON.parse(storedInfo);
+
+            // Display faculty info
+            document.getElementById('faculty-name-display').textContent = facultyInfo.name;
+            document.getElementById('faculty-email-display').textContent = facultyInfo.email;
+            document.getElementById('faculty-initial').textContent = facultyInfo.name.charAt(0).toUpperCase();
+
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date-select').value = today;
+        }
+
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                // Clear session
+                sessionStorage.removeItem('faculty_info');
+
+                // Optionally clear remember token
+                const email = localStorage.getItem('faculty_email');
+                if (email) {
+                    fetch('/api/faculty/logout', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email })
+                    }).catch(err => console.error('Logout error:', err));
+
+                    localStorage.removeItem('faculty_email');
+                    localStorage.removeItem('remember_token');
+                }
+
+                // Redirect to login
+                window.location.href = 'login.html';
+            }
+        }
+
+        function startScanning() {
+            currentSection = document.getElementById('section-select').value;
+            currentSubject = document.getElementById('subject-select').value;
+            currentDate = document.getElementById('date-select').value;
+            currentTime = document.getElementById('time-select').value;
+
+            if (!currentSection) {
+                UI.showAlert('Please select a section', 'error');
+                return;
+            }
+
+            if (!currentSubject) {
+                UI.showAlert('Please select a subject', 'error');
+                return;
+            }
+
+            if (!currentDate) {
+                UI.showAlert('Please select a date', 'error');
+                return;
+            }
+
+            if (!currentTime) {
+                UI.showAlert('Please select a class time', 'error');
+                return;
+            }
+
+            // Check NFC support only when user wants to scan
+            if (!('NDEFReader' in window)) {
+                UI.showAlert('NFC not supported. Make sure you are using Chrome on Android and NFC is enabled in your phone settings.', 'error');
+                return;
+            }
+
+            // Initialize NFC handler
+            nfcHandler = new NFCHandler();
+
+            // Update session info display
+            document.getElementById('current-section').textContent = currentSection;
+            document.getElementById('current-subject').textContent = currentSubject;
+            document.getElementById('current-date').textContent = new Date(currentDate).toLocaleDateString('en-IN');
+            document.getElementById('current-time').textContent = currentTime;
+
+            // Hide config section, show scan section
+            document.getElementById('session-config').classList.add('hidden');
+            document.getElementById('scan-section').classList.remove('hidden');
+
+            // Start NFC scanning
+            startNFCScan();
+        }
+
+        async function startNFCScan() {
+            updateStatus('🔍 Scanning... Tap an ID card');
+
+            try {
+                await nfcHandler.readTag(
+                    async (tagData) => {
+                        updateStatus('✅ Tag detected! Processing...');
+
+                        try {
+                            // Record attendance with section, subject, date, and time
+                            const result = await APIClient.recordAttendance({
+                                nfc_tag_id: tagData.tagId,
+                                faculty_name: facultyInfo.name,
+                                section: currentSection,
+                                subject: currentSubject,
+                                date: currentDate,
+                                time: currentTime
+                            });
+
+                            // Add to log
+                            addToLog({
+                                success: true,
+                                student: result.attendance.student_name,
+                                registerNumber: result.attendance.register_number,
+                                section: currentSection,
+                                subject: currentSubject,
+                                date: currentDate,
+                                time: currentTime,
+                                timestamp: new Date().toLocaleTimeString(),
+                                message: 'Attendance recorded successfully'
+                            });
+
+                            updateStatus('✅ Success! Ready for next scan...');
+
+                        } catch (error) {
+                            addToLog({
+                                success: false,
+                                message: error.message,
+                                timestamp: new Date().toLocaleTimeString()
+                            });
+
+                            updateStatus('❌ Error! Ready for next scan...');
+                        }
+                    },
+                    (error) => {
+                        updateStatus('❌ NFC Error: ' + error.message);
+                        UI.showAlert('NFC Error: ' + error.message, 'error');
+                    }
+                );
+            } catch (error) {
+                updateStatus('❌ Failed to start scanning');
+                UI.showAlert('Failed to start NFC scan: ' + error.message, 'error');
+            }
+        }
+
+        function stopScanning() {
+            if (nfcHandler) {
+                nfcHandler.stopScan();
+            }
+
+            document.getElementById('session-config').classList.remove('hidden');
+            document.getElementById('scan-section').classList.add('hidden');
+            updateStatus('Ready to scan...');
+        }
+
+        function updateStatus(message) {
+            document.getElementById('scan-status').textContent = message;
+        }
+
+        function addToLog(entry) {
+            scanLog.unshift(entry);
+            renderLog();
+        }
+
+        function renderLog() {
+            const logDiv = document.getElementById('scan-log');
+
+            if (scanLog.length === 0) {
+                logDiv.innerHTML = `
+                    <p class="text-secondary text-center" style="padding: 2rem;">
+                        No scans yet. Start tapping ID cards to record attendance.
+                    </p>
+                `;
+                return;
+            }
+
+            logDiv.innerHTML = scanLog.map(entry => `
+                <div style="padding: 1rem; border-bottom: 1px solid var(--border); background: ${entry.success ? 'rgba(74, 222, 128, 0.1)' : 'rgba(239, 68, 68, 0.1)'};">
+                    <div class="flex-between">
+                        <div>
+                            ${entry.success ? `
+                                <strong style="color: var(--success);">✅ ${entry.student}</strong><br>
+                                <span class="text-secondary">${entry.registerNumber}</span><br>
+                                <small class="text-secondary">Section: ${entry.section} | Subject: ${entry.subject}</small><br>
+                                <small class="text-secondary">📅 ${entry.date} | ⏰ ${entry.time}</small>
+                            ` : `
+                                <strong style="color: var(--error);">❌ Failed</strong><br>
+                                <span class="text-secondary">${entry.message}</span>
+                            `}
+                        </div>
+                        <div class="text-right">
+                            <span class="badge ${entry.success ? 'badge-success' : 'badge-error'}">${entry.timestamp}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function clearLog() {
+            if (confirm('Clear all scan logs?')) {
+                scanLog = [];
+                renderLog();
+            }
+        }
+    </script>
+</body>
+
+</html>

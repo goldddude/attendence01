@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Student - TapSyncPro</title>
+    <link rel="stylesheet" href="css/styles-pro.css">
+</head>
+
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="index.html" class="logo">
+                    <div class="logo-icon">⚡</div>
+                    <span>TapSyncPro</span>
+                </a>
+                <nav class="nav">
+                    <a href="index.html" class="nav-link">Overview</a>
+                    <a href="dashboard.html" class="nav-link">Dashboard</a>
+                    <a href="students.html" class="nav-link active">Students</a>
+                    <a href="scan-attendance.html" class="nav-link">Scan</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <div style="margin-bottom: 2rem;">
+                <h1>Add New Student</h1>
+                <p style="color: var(--text-secondary); margin-top: 0.5rem;">Enter student information to create a new
+                    profile</p>
+            </div>
+
+            <div id="alert-container"></div>
+
+            <div class="grid grid-2">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Student Information</h3>
+                        <p class="card-subtitle">All fields are required</p>
+                    </div>
+
+                    <form id="student-form">
+                        <div class="form-group">
+                            <label class="form-label">Full Name *</label>
+                            <input type="text" id="name" class="form-input" placeholder="Enter student's full name"
+                                required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Register Number *</label>
+                            <input type="text" id="register_number" class="form-input" placeholder="e.g., 2024CS001"
+                                required>
+                            <small style="color: var(--text-muted); font-size: 0.8rem;">Must be unique for each
+                                student</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Section *</label>
+                            <input type="text" id="section" class="form-input" placeholder="e.g., A, B, C" required
+                                maxlength="10">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Department *</label>
+                            <input type="text" id="department" class="form-input" placeholder="e.g., Computer Science"
+                                required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Duration / Year *</label>
+                            <input type="text" id="duration" class="form-input" placeholder="e.g., Year 1 or 2021-2025"
+                                required>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <button type="submit" class="btn btn-primary" id="submit-btn">
+                                💾 Save Student
+                            </button>
+                            <a href="students.html" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Guidelines</h3>
+                    </div>
+                    <div style="line-height: 1.8; color: var(--text-secondary);">
+                        <h4 style="margin-bottom: 0.75rem; color: var(--text-primary);">Required Fields:</h4>
+                        <ul style="list-style: none; padding-left: 0;">
+                            <li style="margin-bottom: 0.5rem;">✓ <strong
+                                    style="color: var(--text-primary);">Name:</strong> Student's full legal name</li>
+                            <li style="margin-bottom: 0.5rem;">✓ <strong style="color: var(--text-primary);">Register
+                                    Number:</strong> Unique identifier (no duplicates)</li>
+                            <li style="margin-bottom: 0.5rem;">✓ <strong
+                                    style="color: var(--text-primary);">Section:</strong> Class section (A, B, C, etc.)
+                            </li>
+                            <li style="margin-bottom: 0.5rem;">✓ <strong
+                                    style="color: var(--text-primary);">Department:</strong> Academic department</li>
+                            <li style="margin-bottom: 0.5rem;">✓ <strong
+                                    style="color: var(--text-primary);">Duration:</strong> Year or batch</li>
+                        </ul>
+
+                        <div class="alert alert-info" style="margin-top: 1.5rem;">
+                            <div>
+                                <strong>Next Steps:</strong>
+                                <p style="margin-top: 0.5rem;">After creating the student, you can register their NFC
+                                    card from the student profile page.</p>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-warning" style="margin-top: 1rem;">
+                            <div>
+                                <strong>Bulk Upload:</strong>
+                                <p style="margin-top: 0.5rem;">Need to add multiple students? <a
+                                        href="upload-students.html"
+                                        style="color: var(--primary); font-weight: 600;">Upload Excel file</a></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/app.js"></script>
+    <script>
+        const form = document.getElementById('student-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const alertContainer = document.getElementById('alert-container');
+
+        // Show alert function
+        function showAlert(message, type = 'success') {
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.innerHTML = `
+                <div>
+                    <strong>${type === 'success' ? '✓ Success!' : '✗ Error!'}</strong>
+                    <p style="margin-top: 0.25rem;">${message}</p>
+                </div>
+            `;
+            alertContainer.innerHTML = '';
+            alertContainer.appendChild(alert);
+
+            // Scroll to top to show alert
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            // Auto-dismiss success alerts
+            if (type === 'success') {
+                setTimeout(() => {
+                    alert.remove();
+                }, 5000);
+            }
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Get form data
+            const formData = {
+                name: document.getElementById('name').value.trim(),
+                register_number: document.getElementById('register_number').value.trim(),
+                section: document.getElementById('section').value.trim(),
+                department: document.getElementById('department').value.trim(),
+                duration: document.getElementById('duration').value.trim()
+            };
+
+            // Validate all fields
+            const errors = [];
+            if (!formData.name) errors.push('Name is required');
+            if (!formData.register_number) errors.push('Register number is required');
+            if (!formData.section) errors.push('Section is required');
+            if (!formData.department) errors.push('Department is required');
+            if (!formData.duration) errors.push('Duration is required');
+
+            if (errors.length > 0) {
+                showAlert(errors.join('<br>'), 'error');
+                return;
+            }
+
+            // Disable button
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '⏳ Saving...';
+
+            try {
+                const response = await APIClient.createStudent(formData);
+
+                showAlert('Student created successfully! Redirecting to profile...', 'success');
+
+                // Reset form
+                form.reset();
+
+                // Redirect to student profile after 1.5 seconds
+                setTimeout(() => {
+                    window.location.href = `student-profile.html?id=${response.student.id}`;
+                }, 1500);
+
+            } catch (error) {
+                showAlert(error.message || 'Failed to create student. Please try again.', 'error');
+
+                // Re-enable button
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '💾 Save Student';
+            }
+        });
+
+        // Real-time validation
+        const registerInput = document.getElementById('register_number');
+        registerInput.addEventListener('blur', () => {
+            const value = registerInput.value.trim();
+            if (value && value.length < 3) {
+                registerInput.style.borderColor = 'var(--error)';
+            } else {
+                registerInput.style.borderColor = '';
+            }
+        });
+    </script>
+</body>
+
+</html>
