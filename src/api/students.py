@@ -10,11 +10,9 @@ from werkzeug.utils import secure_filename
 
 students_bp = Blueprint('students', __name__)
 
-UPLOAD_FOLDER = 'uploads'
+# Use /tmp for uploads — only writable directory on Vercel serverless
+UPLOAD_FOLDER = '/tmp/uploads'
 ALLOWED_EXTENSIONS = {'xlsx', 'xls', 'csv'}
-
-# Ensure upload folder exists
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 def allowed_file(filename):
@@ -61,7 +59,8 @@ def upload_students():
         if not allowed_file(file.filename):
             return jsonify({'error': 'Invalid file type. Please upload .xlsx, .xls, or .csv'}), 400
         
-        # Save file temporarily
+        # Save file temporarily to /tmp (only writable dir on Vercel)
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
         filename = secure_filename(file.filename)
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
