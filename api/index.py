@@ -83,8 +83,7 @@ def create_vercel_app():
     return app
 
 
-# Build the app at module level (Vercel imports this module once per cold start)
+# Vercel auto-detects Flask WSGI apps via the `app` variable name.
+# Do NOT add `handler = app` — Vercel's runtime does issubclass() checks
+# on `handler` expecting a class, which crashes when it gets a Flask instance.
 app = create_vercel_app()
-
-# Vercel requires the WSGI handler to be named 'handler'
-handler = app
