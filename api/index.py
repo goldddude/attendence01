@@ -31,6 +31,34 @@ def create_vercel_app():
     app.register_blueprint(attendance_bp, url_prefix='/api/attendance')
     app.register_blueprint(faculty_bp, url_prefix='/api/faculty')
 
+    # Health check endpoint — use this to confirm MongoDB is connected in Vercel
+    @app.route('/api/health')
+    def health():
+        mongo_uri = os.getenv('MONGODB_URI', 'NOT SET')
+        mongo_db = os.getenv('MONGODB_DB', 'nfc_attendance')
+        uri_preview = mongo_uri[:30] + '...' if len(mongo_uri) > 30 else mongo_uri
+        try:
+            from src.models import get_db
+            db = get_db()
+            db.client.admin.command('ping')
+            student_count = db.students.count_documents({})
+            return jsonify({
+                'status': 'ok',
+                'mongodb': 'connected',
+                'database': mongo_db,
+                'uri_set': mongo_uri != 'NOT SET',
+                'uri_preview': uri_preview,
+                'students': student_count
+            })
+        except Exception as e:
+            return jsonify({
+                'status': 'error',
+                'mongodb': 'failed',
+                'uri_set': mongo_uri != 'NOT SET',
+                'uri_preview': uri_preview,
+                'error': str(e)
+            }), 500
+
     # Frontend routes
     @app.route('/')
     def index():
