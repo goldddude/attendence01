@@ -256,12 +256,15 @@
                                         <a href="student-profile.html?id=${student.id}" class="btn btn-secondary action-btn">
                                             👁 View
                                         </a>
-                                        <button onclick="deleteStudent(${student.id}, '${student.name}')" class="btn btn-danger action-btn">
+                                        <button
+                                            class="btn btn-danger action-btn delete-btn"
+                                            data-id="${student.id}"
+                                            data-name="${student.name}">
                                             🗑 Delete
                                         </button>
                                     </td>
-                                </tr>
-                            `).join('')}
+                                </tr >
+            `).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -289,20 +292,8 @@
                 `;
                 const card = document.querySelector('.card');
                 card.parentElement.insertBefore(alertDiv, card);
-
                 setTimeout(() => alertDiv.remove(), 3000);
-
-                // Remove row from table with animation
-                const row = document.getElementById(`student-row-${studentId}`);
-                if (row) {
-                    row.style.transition = 'all 0.3s ease';
-                    row.style.opacity = '0';
-                    row.style.transform = 'translateX(-20px)';
-                    setTimeout(() => {
-                        // Reload students
-                        loadStudents();
-                    }, 300);
-                }
+                loadStudents();
 
             } catch (error) {
                 alert(`Failed to delete student: ${error.message}`);
@@ -311,6 +302,14 @@
 
         // Event listeners
         document.getElementById('search').addEventListener('input', filterAndDisplay);
+
+        // Delete via event delegation (supports MongoDB string IDs)
+        document.getElementById('students-container').addEventListener('click', (e) => {
+            const btn = e.target.closest('.delete-btn');
+            if (btn) {
+                deleteStudent(btn.dataset.id, btn.dataset.name);
+            }
+        });
 
         // Load students on page load
         loadStudents();
