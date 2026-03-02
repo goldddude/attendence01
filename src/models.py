@@ -16,7 +16,10 @@ def get_db():
     """Get MongoDB database instance (singleton)"""
     global _client, _db
     if _db is None:
-        mongo_uri = os.getenv('MONGODB_URI', 'mongodb+srv://sudhamadb:8qZcUxPko58vDYvo@cluster0.gsoxjjt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
+        mongo_uri = os.getenv('MONGODB_URI')
+        if not mongo_uri:
+            raise RuntimeError("MONGODB_URI environment variable is not set!")
+
         _client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
         db_name = os.getenv('MONGODB_DB', 'nfc_attendance')
         _db = _client[db_name]
