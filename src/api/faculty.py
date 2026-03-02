@@ -60,15 +60,13 @@ def verify_otp():
         success, result = FacultyService.verify_otp(email, otp, remember_me)
         
         if success:
-            faculty, token = result
+            faculty_dict, token = result
             response_data = {
                 'message': 'Login successful',
-                'faculty': faculty.to_dict()
+                'faculty': faculty_dict
             }
-            
             if token:
                 response_data['remember_token'] = token
-            
             return jsonify(response_data), 200
         else:
             return jsonify({'error': result}), 400
@@ -96,10 +94,7 @@ def verify_token():
         success, result = FacultyService.verify_remember_token(email, token)
         
         if success:
-            return jsonify({
-                'message': 'Token valid',
-                'faculty': result.to_dict()
-            }), 200
+            return jsonify({'message': 'Token valid', 'faculty': result}), 200
         else:
             return jsonify({'error': result}), 400
             
@@ -141,7 +136,7 @@ def get_profile():
         faculty = FacultyService.get_faculty_by_email(email)
         
         if faculty:
-            return jsonify(faculty.to_dict()), 200
+            return jsonify(faculty), 200
         else:
             return jsonify({'error': 'Faculty not found'}), 404
             

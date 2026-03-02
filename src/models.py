@@ -1,104 +1,110 @@
 """
-Database Models for NFC Attendance System
-Uses SQLAlchemy ORM for database abstraction
+MongoDB Database for NFC Attendance System
+Uses PyMongo for database operations
 """
 from datetime import datetime
-from flask_sqlalchemy import SQLAlchemy
-
-db = SQLAlchemy()
-
-
-class Student(db.Model):
-    """Student model with NFC tag support"""
-    __tablename__ = 'students'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    register_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
-    section = db.Column(db.String(20), nullable=False)
-    department = db.Column(db.String(100), nullable=False)
-    duration = db.Column(db.String(20), nullable=False)  # e.g., "Year 1", "2021-2025"
-    nfc_tag_id = db.Column(db.String(100), unique=True, nullable=True, index=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relationship
-    attendance_records = db.relationship('Attendance', backref='student', lazy=True, cascade='all, delete-orphan')
-    
-    def to_dict(self):
-        """Convert student object to dictionary"""
-        return {
-            'id': self.id,
-            'name': self.name,
-            'register_number': self.register_number,
-            'section': self.section,
-            'department': self.department,
-            'duration': self.duration,
-            'nfc_tag_id': self.nfc_tag_id,
-            'has_nfc': self.nfc_tag_id is not None,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
-        }
-    
-    def __repr__(self):
-        return f'<Student {self.register_number}: {self.name}>'
+from bson import ObjectId
+from pymongo import MongoClient, ASCENDING, DESCENDING
+import os
 
 
-class Faculty(db.Model):
-    """Faculty model for login and authentication"""
-    __tablename__ = 'faculty'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
-    sections = db.Column(db.String(500), nullable=True)  # Comma-separated sections like "S-01,S-02"
-    otp = db.Column(db.String(6), nullable=True)  # Current OTP
-    otp_created_at = db.Column(db.DateTime, nullable=True)
-    remember_token = db.Column(db.String(100), nullable=True, unique=True)
-    remember_expires = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    def to_dict(self):
-        """Convert faculty object to dictionary"""
-        return {
-            'id': self.id,
-            'name': self.name,
-            'email': self.email,
-            'sections': self.sections.split(',') if self.sections else [],
-            'created_at': self.created_at.isoformat() if self.created_at else None
-        }
-    
-    def __repr__(self):
-        return f'<Faculty {self.email}: {self.name}>'
+_client = None
+_db = None
 
 
-class Attendance(db.Model):
-    """Attendance record model"""
-    __tablename__ = 'attendance'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False, index=True)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
-    recorded_by = db.Column(db.String(100), nullable=False)  # Faculty name
-    section = db.Column(db.String(20), nullable=True, index=True)  # Section like S-01, S-02
-    subject = db.Column(db.String(100), nullable=True, index=True)  # Subject name
-    date = db.Column(db.String(20), nullable=True, index=True)  # Date of class (YYYY-MM-DD)
-    class_time = db.Column(db.String(20), nullable=True)  # Class time slot (e.g., 09:00-09:50)
-    
-    def to_dict(self):
-        """Convert attendance object to dictionary"""
-        return {
-            'id': self.id,
-            'student_id': self.student_id,
-            'student_name': self.student.name if self.student else None,
-            'register_number': self.student.register_number if self.student else None,
-            'timestamp': self.timestamp.isoformat() if self.timestamp else None,
-            'recorded_by': self.recorded_by,
-            'section': self.section,
-            'subject': self.subject,
-            'date': self.date,
-            'class_time': self.class_time
-        }
-    
-    def __repr__(self):
-        return f'<Attendance {self.student_id} at {self.timestamp}>'
+def get_db():
+    """Get MongoDB database instance (singleton)"""
+    global _client, _db
+    if _db is None:
+        mongo_uri = os.getenv('MONGODB_URI', 'mongodb+srv://sudhamadb:8qZcUxPko58vDYvo@cluster0.gsoxjjt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0')
+        _client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
+        db_name = os.getenv('MONGODB_DB', 'nfc_attendance')
+        _db = _client[db_name]
+        # Create indexes in background so startup is not blocked
+        import threading
+        threading.Thread(target=_ensure_indexes, args=(_db,), daemon=True).start()
+    return _db
+
+
+def _ensure_indexes(db):
+    """Create indexes for performance"""
+    try:
+        db.students.create_index([('register_number', ASCENDING)], unique=True)
+        db.students.create_index([('nfc_tag_id', ASCENDING)], sparse=True)
+        db.faculty.create_index([('email', ASCENDING)], unique=True)
+        db.attendance.create_index([('student_id', ASCENDING)])
+        db.attendance.create_index([('timestamp', DESCENDING)])
+        db.attendance.create_index([('date', ASCENDING)])
+        db.attendance.create_index([('section', ASCENDING)])
+        db.attendance.create_index([('subject', ASCENDING)])
+    except Exception as e:
+        print(f"⚠️  Index creation warning: {e}")
+
+
+def obj_id(id_str):
+    """Convert string to ObjectId safely"""
+    try:
+        return ObjectId(str(id_str))
+    except Exception:
+        return None
+
+
+# ─────────────────────────────────────────────
+# Helper: Student document → dict
+# ─────────────────────────────────────────────
+def student_to_dict(doc):
+    if not doc:
+        return None
+    return {
+        'id': str(doc['_id']),
+        'name': doc.get('name', ''),
+        'register_number': doc.get('register_number', ''),
+        'section': doc.get('section', ''),
+        'department': doc.get('department', ''),
+        'duration': doc.get('duration', ''),
+        'nfc_tag_id': doc.get('nfc_tag_id'),
+        'has_nfc': bool(doc.get('nfc_tag_id')),
+        'created_at': doc['created_at'].isoformat() if doc.get('created_at') else None,
+        'updated_at': doc['updated_at'].isoformat() if doc.get('updated_at') else None,
+    }
+
+
+# ─────────────────────────────────────────────
+# Helper: Faculty document → dict
+# ─────────────────────────────────────────────
+def faculty_to_dict(doc):
+    if not doc:
+        return None
+    sections = doc.get('sections', '')
+    return {
+        'id': str(doc['_id']),
+        'name': doc.get('name', ''),
+        'email': doc.get('email', ''),
+        'sections': sections.split(',') if sections else [],
+        'created_at': doc['created_at'].isoformat() if doc.get('created_at') else None,
+    }
+
+
+# ─────────────────────────────────────────────
+# Helper: Attendance document → dict
+# ─────────────────────────────────────────────
+def attendance_to_dict(doc, student_doc=None):
+    if not doc:
+        return None
+    # If student_doc not passed, fetch it
+    if student_doc is None:
+        db = get_db()
+        student_doc = db.students.find_one({'_id': doc.get('student_id')})
+
+    return {
+        'id': str(doc['_id']),
+        'student_id': str(doc.get('student_id', '')),
+        'student_name': student_doc.get('name') if student_doc else None,
+        'register_number': student_doc.get('register_number') if student_doc else None,
+        'timestamp': doc['timestamp'].isoformat() if doc.get('timestamp') else None,
+        'recorded_by': doc.get('recorded_by', ''),
+        'section': doc.get('section'),
+        'subject': doc.get('subject'),
+        'date': doc.get('date'),
+        'class_time': doc.get('class_time'),
+    }

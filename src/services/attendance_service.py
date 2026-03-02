@@ -1,137 +1,124 @@
 """
 Attendance Management Service
-Business logic for attendance operations
+Business logic for attendance operations (MongoDB)
 """
 from datetime import datetime, timedelta
-from src.models import db, Attendance, Student
-from sqlalchemy import func
+from bson import ObjectId
+from src.models import get_db, attendance_to_dict, obj_id
 
 
 class AttendanceService:
-    """Service class for attendance management"""
-    
+    """Service class for attendance management using MongoDB"""
+
     @staticmethod
-    def record_attendance(student_id, faculty_name, section=None, subject=None):
-        """
-        Record attendance for a student
-        
-        Args:
-            student_id: ID of the student
-            faculty_name: Name of the faculty recording attendance
-            section: Section (e.g., S-01, S-02)
-            subject: Subject name
-            
-        Returns:
-            tuple: (success, message_or_attendance)
-        """
+    def record_attendance(student_id, faculty_name, section=None, subject=None, date=None, class_time=None):
+        """Record attendance for a student"""
         try:
-            # Verify student exists
-            student = Student.query.get(student_id)
+            db = get_db()
+            oid = obj_id(student_id)
+            if not oid:
+                return False, "Invalid student ID"
+
+            student = db.students.find_one({'_id': oid})
             if not student:
                 return False, "Student not found"
-            
-            # Check if already marked today (prevent duplicates within 1 hour)
+
+            # Prevent duplicates within 1 hour for same session
             one_hour_ago = datetime.utcnow() - timedelta(hours=1)
-            recent_attendance = Attendance.query.filter(
-                Attendance.student_id == student_id,
-                Attendance.timestamp >= one_hour_ago
-            ).first()
-            
-            if recent_attendance:
-                return False, f"Attendance already recorded for {student.name} at {recent_attendance.timestamp.strftime('%H:%M:%S')}"
-            
-            # Create attendance record
-            attendance = Attendance(
-                student_id=student_id,
-                recorded_by=faculty_name,
-                section=section,
-                subject=subject
-            )
-            
-            db.session.add(attendance)
-            db.session.commit()
-            
-            return True, attendance
-            
+            dup_query = {
+                'student_id': oid,
+                'timestamp': {'$gte': one_hour_ago}
+            }
+            if section:
+                dup_query['section'] = section
+            if subject:
+                dup_query['subject'] = subject
+
+            recent = db.attendance.find_one(dup_query)
+            if recent:
+                ts = recent['timestamp'].strftime('%H:%M:%S')
+                return False, f"Attendance already recorded for {student['name']} at {ts}"
+
+            now = datetime.utcnow()
+            doc = {
+                'student_id': oid,
+                'timestamp': now,
+                'recorded_by': faculty_name,
+                'section': section,
+                'subject': subject,
+                'date': date or now.strftime('%Y-%m-%d'),
+                'class_time': class_time,
+            }
+
+            result = db.attendance.insert_one(doc)
+            doc['_id'] = result.inserted_id
+
+            return True, attendance_to_dict(doc, student)
+
         except Exception as e:
-            db.session.rollback()
             return False, f"Error recording attendance: {str(e)}"
-    
+
     @staticmethod
     def get_attendance_by_student(student_id, limit=None):
-        """
-        Get attendance records for a student
-        
-        Args:
-            student_id: ID of the student
-            limit: Maximum number of records to return (optional)
-            
-        Returns:
-            List of attendance records
-        """
-        query = Attendance.query.filter_by(student_id=student_id).order_by(Attendance.timestamp.desc())
-        
+        """Get attendance records for a student"""
+        db = get_db()
+        oid = obj_id(student_id)
+        if not oid:
+            return []
+
+        student = db.students.find_one({'_id': oid})
+        cursor = db.attendance.find({'student_id': oid}).sort('timestamp', -1)
         if limit:
-            query = query.limit(limit)
-        
-        return query.all()
-    
+            cursor = cursor.limit(limit)
+
+        return [attendance_to_dict(d, student) for d in cursor]
+
     @staticmethod
     def get_recent_attendance(limit=50):
-        """
-        Get recent attendance records across all students
-        
-        Args:
-            limit: Maximum number of records to return
-            
-        Returns:
-            List of attendance records
-        """
-        return Attendance.query.order_by(Attendance.timestamp.desc()).limit(limit).all()
-    
+        """Get recent attendance records across all students"""
+        db = get_db()
+        docs = db.attendance.find().sort('timestamp', -1).limit(limit)
+        result = []
+        for doc in docs:
+            student = db.students.find_one({'_id': doc.get('student_id')})
+            result.append(attendance_to_dict(doc, student))
+        return result
+
     @staticmethod
     def get_attendance_by_date(date=None):
-        """
-        Get attendance records for a specific date
-        
-        Args:
-            date: Date object (defaults to today)
-            
-        Returns:
-            List of attendance records
-        """
+        """Get attendance records for a specific date"""
+        db = get_db()
         if date is None:
             date = datetime.utcnow().date()
-        
-        start_of_day = datetime.combine(date, datetime.min.time())
-        end_of_day = datetime.combine(date, datetime.max.time())
-        
-        return Attendance.query.filter(
-            Attendance.timestamp >= start_of_day,
-            Attendance.timestamp <= end_of_day
-        ).order_by(Attendance.timestamp.desc()).all()
-    
+
+        date_str = date.strftime('%Y-%m-%d')
+        docs = db.attendance.find({'date': date_str}).sort('timestamp', -1)
+
+        result = []
+        for doc in docs:
+            student = db.students.find_one({'_id': doc.get('student_id')})
+            result.append(attendance_to_dict(doc, student))
+        return result
+
     @staticmethod
     def get_attendance_stats():
-        """
-        Get attendance statistics
-        
-        Returns:
-            Dictionary with statistics
-        """
-        total_students = Student.query.count()
-        total_records = Attendance.query.count()
-        
-        # Today's attendance
-        today = datetime.utcnow().date()
-        start_of_day = datetime.combine(today, datetime.min.time())
-        today_count = Attendance.query.filter(Attendance.timestamp >= start_of_day).count()
-        
-        # Unique students who attended today
-        today_students = db.session.query(Attendance.student_id).filter(
-            Attendance.timestamp >= start_of_day
-        ).distinct().count()
-        
+        """Get attendance statistics"""
+        db = get_db()
+        total_students = db.students.count_documents({})
+        total_records = db.attendance.count_documents({})
+
+        today = datetime.utcnow().strftime('%Y-%m-%d')
+        today_count = db.attendance.count_documents({'date': today})
+
+        # Unique students today
+        pipeline = [
+            {'$match': {'date': today}},
+            {'$group': {'_id': '$student_id'}},
+            {'$count': 'total'}
+        ]
+        agg = list(db.attendance.aggregate(pipeline))
+        today_students = agg[0]['total'] if agg else 0
+
         return {
             'total_students': total_students,
             'total_attendance_records': total_records,
@@ -139,3 +126,80 @@ class AttendanceService:
             'today_unique_students': today_students,
             'today_percentage': round((today_students / total_students * 100) if total_students > 0 else 0, 2)
         }
+
+    @staticmethod
+    def get_all_attendance(filters=None, limit=500):
+        """Get all attendance with optional filters"""
+        db = get_db()
+        query = {}
+        if filters:
+            if filters.get('section'):
+                query['section'] = filters['section']
+            if filters.get('subject'):
+                query['subject'] = filters['subject']
+            if filters.get('date'):
+                query['date'] = filters['date']
+
+        docs = db.attendance.find(query).sort('timestamp', -1).limit(limit)
+        result = []
+        for doc in docs:
+            student = db.students.find_one({'_id': doc.get('student_id')})
+            result.append(attendance_to_dict(doc, student))
+        return result
+
+    @staticmethod
+    def get_sessions():
+        """Get attendance grouped by class session"""
+        db = get_db()
+        pipeline = [
+            {
+                '$group': {
+                    '_id': {
+                        'date': '$date',
+                        'section': '$section',
+                        'subject': '$subject',
+                        'class_time': '$class_time',
+                        'recorded_by': '$recorded_by',
+                    },
+                    'count': {'$sum': 1},
+                    'first_recorded': {'$min': '$timestamp'}
+                }
+            },
+            {'$sort': {'first_recorded': -1}}
+        ]
+
+        sessions = []
+        for doc in db.attendance.aggregate(pipeline):
+            g = doc['_id']
+            sessions.append({
+                'date': g.get('date'),
+                'section': g.get('section'),
+                'subject': g.get('subject'),
+                'class_time': g.get('class_time'),
+                'recorded_by': g.get('recorded_by'),
+                'student_count': doc['count'],
+                'first_recorded': doc['first_recorded'].isoformat() if doc.get('first_recorded') else None
+            })
+
+        return sessions
+
+    @staticmethod
+    def get_session_detail(date=None, section=None, subject=None, class_time=None):
+        """Get attendance records for a specific session"""
+        db = get_db()
+        query = {}
+        if date:
+            query['date'] = date
+        if section:
+            query['section'] = section
+        if subject:
+            query['subject'] = subject
+        if class_time:
+            query['class_time'] = class_time
+
+        docs = db.attendance.find(query).sort('timestamp', 1)
+        result = []
+        for doc in docs:
+            student = db.students.find_one({'_id': doc.get('student_id')})
+            result.append(attendance_to_dict(doc, student))
+        return result

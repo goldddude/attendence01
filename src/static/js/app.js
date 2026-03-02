@@ -123,6 +123,22 @@ class APIClient {
     static async getAttendanceStats() {
         return this.request('/api/attendance/stats');
     }
+
+    static async getAttendanceSessions() {
+        return this.request('/api/attendance/sessions');
+    }
+
+    static async getAllAttendance(filters = {}) {
+        const params = new URLSearchParams(filters);
+        return this.request(`/api/attendance/all?${params}`);
+    }
+
+    static async getSessionDetail(date, section, subject, classTime) {
+        const params = new URLSearchParams({ date, section });
+        if (subject) params.append('subject', subject);
+        if (classTime) params.append('class_time', classTime);
+        return this.request(`/api/attendance/session-detail?${params}`);
+    }
 }
 
 /**

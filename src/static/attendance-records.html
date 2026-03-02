@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Records - TapSyncPro</title>
+    <meta name="description" content="View all class attendance records stored in the database">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles-pro.css">
+    <style>
+        .filter-bar {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .filter-bar .form-group {
+            margin-bottom: 0;
+            flex: 1;
+            min-width: 140px;
+        }
+
+        .filter-bar .form-input {
+            font-size: 0.875rem;
+        }
+
+        .session-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .session-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.2);
+        }
+
+        .session-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.25rem 1.5rem;
+            cursor: pointer;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .session-meta {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .session-title {
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: var(--text-primary);
+            margin-bottom: 0.35rem;
+        }
+
+        .session-subtitle {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+        }
+
+        .session-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-shrink: 0;
+        }
+
+        .student-count-badge {
+            background: rgba(74, 222, 128, 0.15);
+            color: var(--primary);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            padding: 0.35rem 0.85rem;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            white-space: nowrap;
+        }
+
+        .expand-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            font-size: 0.7rem;
+            flex-shrink: 0;
+        }
+
+        .session-card.expanded .expand-icon {
+            transform: rotate(180deg);
+            background: var(--primary);
+            color: var(--bg-primary);
+            border-color: var(--primary);
+        }
+
+        .session-detail {
+            display: none;
+            border-top: 1px solid var(--border);
+            background: var(--bg-secondary);
+        }
+
+        .session-card.expanded .session-detail {
+            display: block;
+        }
+
+        .session-detail-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            gap: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .record-row {
+            display: grid;
+            grid-template-columns: 2fr 2fr 1fr;
+            padding: 0.75rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            transition: background 0.15s ease;
+        }
+
+        .record-row:hover {
+            background: rgba(74, 222, 128, 0.04);
+        }
+
+        .record-row:last-child {
+            border-bottom: none;
+        }
+
+        .record-row-header {
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.6rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: grid;
+            grid-template-columns: 2fr 2fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-mini {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            text-align: center;
+        }
+
+        .stat-mini-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-mini-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .view-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .view-btn.active {
+            background: var(--primary);
+            color: var(--bg-primary);
+            border-color: var(--primary);
+        }
+
+        @media (max-width: 600px) {
+
+            .record-row,
+            .record-row-header {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .record-row> :last-child,
+            .record-row-header> :last-child {
+                display: none;
+            }
+
+            .session-meta {
+                gap: 0.35rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <a href="index.html" class="logo">
+                    <div class="logo-icon">⚡</div>
+                    <span>TapSyncPro</span>
+                </a>
+                <nav class="nav">
+                    <a href="index.html" class="nav-link">Overview</a>
+                    <a href="dashboard.html" class="nav-link">Dashboard</a>
+                    <a href="students.html" class="nav-link">Students</a>
+                    <a href="attendance-records.html" class="nav-link active">Records</a>
+                    <a href="scan-attendance.html" class="nav-link">Scan</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main class="main">
+        <div class="container">
+            <!-- Page Header -->
+            <div
+                style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h1>📋 Attendance Records</h1>
+                    <p style="color: var(--text-secondary); margin-top: 0.5rem;">All class attendance sessions stored in
+                        the database</p>
+                </div>
+                <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                    <div class="view-toggle">
+                        <button class="view-btn active" id="btn-sessions" onclick="switchView('sessions')">📅
+                            Sessions</button>
+                        <button class="view-btn" id="btn-records" onclick="switchView('records')">📄 All
+                            Records</button>
+                    </div>
+                    <button onclick="refreshData()" class="btn btn-secondary">🔄 Refresh</button>
+                </div>
+            </div>
+
+            <!-- Summary Stats -->
+            <div class="stats-summary" id="stats-summary">
+                <div class="stat-mini">
+                    <div class="stat-mini-value" id="stat-sessions">—</div>
+                    <div class="stat-mini-label">Total Sessions</div>
+                </div>
+                <div class="stat-mini">
+                    <div class="stat-mini-value" id="stat-total">—</div>
+                    <div class="stat-mini-label">Total Records</div>
+                </div>
+                <div class="stat-mini">
+                    <div class="stat-mini-value" id="stat-subjects">—</div>
+                    <div class="stat-mini-label">Subjects Covered</div>
+                </div>
+                <div class="stat-mini">
+                    <div class="stat-mini-value" id="stat-sections">—</div>
+                    <div class="stat-mini-label">Sections</div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="card" style="margin-bottom: 1.5rem;">
+                <div class="filter-bar">
+                    <div class="form-group">
+                        <label class="form-label">Section</label>
+                        <select id="filter-section" class="form-input" onchange="applyFilters()">
+                            <option value="">All Sections</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Subject</label>
+                        <select id="filter-subject" class="form-input" onchange="applyFilters()">
+                            <option value="">All Subjects</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Date</label>
+                        <input type="date" id="filter-date" class="form-input" onchange="applyFilters()">
+                    </div>
+                    <div class="form-group" style="flex: 0;">
+                        <label class="form-label">&nbsp;</label>
+                        <button onclick="clearFilters()" class="btn btn-secondary" style="white-space: nowrap;">✕
+                            Clear</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sessions View -->
+            <div id="sessions-view">
+                <div id="sessions-container">
+                    <div class="loading-container">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- All Records View (hidden by default) -->
+            <div id="records-view" style="display: none;">
+                <div class="card">
+                    <div class="card-header flex-between">
+                        <div>
+                            <h3 class="card-title">All Attendance Records</h3>
+                            <p class="card-subtitle" id="records-count">Loading...</p>
+                        </div>
+                    </div>
+                    <div id="records-container">
+                        <div class="loading-container">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/app.js"></script>
+    <script>
+        let allSessions = [];
+        let allRecords = [];
+        let filteredSessions = [];
+        let filteredRecords = [];
+        let currentView = 'sessions';
+
+        // Expanded session cache
+        const sessionDetailCache = {};
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadData();
+        });
+
+        async function loadData() {
+            await Promise.all([loadSessions(), loadAllRecords()]);
+        }
+
+        async function loadSessions() {
+            const container = document.getElementById('sessions-container');
+            UI.showLoading(container);
+
+            try {
+                const data = await APIClient.request('/api/attendance/sessions');
+                allSessions = data.sessions || [];
+                filteredSessions = [...allSessions];
+
+                updateStats();
+                populateFilters();
+                renderSessions(filteredSessions);
+            } catch (error) {
+                container.innerHTML = `<div class="alert alert-error">Failed to load sessions: ${error.message}</div>`;
+            }
+        }
+
+        async function loadAllRecords() {
+            const container = document.getElementById('records-container');
+            UI.showLoading(container);
+
+            try {
+                const data = await APIClient.request('/api/attendance/all?limit=1000');
+                allRecords = data.attendance || [];
+                filteredRecords = [...allRecords];
+                document.getElementById('records-count').textContent = `${allRecords.length} total records`;
+                renderAllRecords(filteredRecords);
+            } catch (error) {
+                container.innerHTML = `<div class="alert alert-error">Failed to load records: ${error.message}</div>`;
+            }
+        }
+
+        function updateStats() {
+            const totalRecords = allSessions.reduce((sum, s) => sum + (s.student_count || 0), 0);
+            const subjects = new Set(allSessions.map(s => s.subject).filter(Boolean));
+            const sections = new Set(allSessions.map(s => s.section).filter(Boolean));
+
+            document.getElementById('stat-sessions').textContent = allSessions.length;
+            document.getElementById('stat-total').textContent = totalRecords;
+            document.getElementById('stat-subjects').textContent = subjects.size;
+            document.getElementById('stat-sections').textContent = sections.size;
+        }
+
+        function populateFilters() {
+            const sections = [...new Set(allSessions.map(s => s.section).filter(Boolean))].sort();
+            const subjects = [...new Set(allSessions.map(s => s.subject).filter(Boolean))].sort();
+
+            const secSel = document.getElementById('filter-section');
+            const subSel = document.getElementById('filter-subject');
+
+            secSel.innerHTML = '<option value="">All Sections</option>' +
+                sections.map(s => `<option value="${s}">${s}</option>`).join('');
+
+            subSel.innerHTML = '<option value="">All Subjects</option>' +
+                subjects.map(s => `<option value="${s}">${s}</option>`).join('');
+        }
+
+        function applyFilters() {
+            const section = document.getElementById('filter-section').value;
+            const subject = document.getElementById('filter-subject').value;
+            const date = document.getElementById('filter-date').value;
+
+            filteredSessions = allSessions.filter(s => {
+                if (section && s.section !== section) return false;
+                if (subject && s.subject !== subject) return false;
+                if (date && s.date !== date) return false;
+                return true;
+            });
+
+            filteredRecords = allRecords.filter(r => {
+                if (section && r.section !== section) return false;
+                if (subject && r.subject !== subject) return false;
+                if (date && r.date !== date) return false;
+                return true;
+            });
+
+            renderSessions(filteredSessions);
+            renderAllRecords(filteredRecords);
+            document.getElementById('records-count').textContent = `${filteredRecords.length} records`;
+        }
+
+        function clearFilters() {
+            document.getElementById('filter-section').value = '';
+            document.getElementById('filter-subject').value = '';
+            document.getElementById('filter-date').value = '';
+            filteredSessions = [...allSessions];
+            filteredRecords = [...allRecords];
+            renderSessions(filteredSessions);
+            renderAllRecords(filteredRecords);
+            document.getElementById('records-count').textContent = `${allRecords.length} total records`;
+        }
+
+        function renderSessions(sessions) {
+            const container = document.getElementById('sessions-container');
+
+            if (sessions.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <h3>No sessions found</h3>
+                        <p style="margin-top: 0.5rem;">Try adjusting the filters or scan some attendance first.</p>
+                        <a href="scan-attendance.html" class="btn btn-primary" style="margin-top: 1rem;">📱 Go to Scan</a>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = sessions.map((session, index) => {
+                const dateDisplay = session.date
+                    ? new Date(session.date + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })
+                    : 'Unknown Date';
+
+                const sessionKey = `${session.date}_${session.section}_${session.subject}_${session.class_time}`;
+
+                return `
+                <div class="session-card" id="session-${index}">
+                    <div class="session-header" onclick="toggleSession(${index}, '${session.date}', '${session.section}', '${encodeURIComponent(session.subject || '')}', '${session.class_time || ''}')">
+                        <div style="flex: 1; min-width: 0;">
+                            <div class="session-title">
+                                📚 ${session.subject || 'Unknown Subject'} &mdash; ${session.section || 'Unknown Section'}
+                            </div>
+                            <div class="session-subtitle">
+                                📅 ${dateDisplay}
+                                ${session.class_time ? ` &nbsp;|&nbsp; ⏰ ${session.class_time}` : ''}
+                                ${session.recorded_by ? ` &nbsp;|&nbsp; 👤 ${session.recorded_by}` : ''}
+                            </div>
+                        </div>
+                        <div class="session-right">
+                            <div class="student-count-badge">
+                                👥 ${session.student_count} student${session.student_count !== 1 ? 's' : ''}
+                            </div>
+                            <div class="expand-icon">▼</div>
+                        </div>
+                    </div>
+                    <div class="session-detail" id="detail-${index}">
+                        <div class="session-detail-loading">
+                            <div class="spinner"></div>
+                            <span>Loading records...</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            }).join('');
+        }
+
+        async function toggleSession(index, date, section, subject, classTime) {
+            const card = document.getElementById(`session-${index}`);
+            const detail = document.getElementById(`detail-${index}`);
+            const isExpanded = card.classList.contains('expanded');
+
+            if (isExpanded) {
+                card.classList.remove('expanded');
+                return;
+            }
+
+            card.classList.add('expanded');
+
+            // Cache key
+            const cacheKey = `${date}_${section}_${subject}_${classTime}`;
+            if (sessionDetailCache[cacheKey]) {
+                detail.innerHTML = renderDetailTable(sessionDetailCache[cacheKey]);
+                return;
+            }
+
+            // Fetch records for this session
+            try {
+                const params = new URLSearchParams({ date, section });
+                if (subject) params.append('subject', decodeURIComponent(subject));
+                if (classTime) params.append('class_time', classTime);
+
+                const data = await APIClient.request(`/api/attendance/session-detail?${params}`);
+                sessionDetailCache[cacheKey] = data.attendance || [];
+                detail.innerHTML = renderDetailTable(sessionDetailCache[cacheKey]);
+            } catch (error) {
+                detail.innerHTML = `<div style="padding: 1rem;"><div class="alert alert-error">Failed to load: ${error.message}</div></div>`;
+            }
+        }
+
+        function renderDetailTable(records) {
+            if (records.length === 0) {
+                return `<div style="padding: 1.5rem; text-align: center; color: var(--text-secondary);">No records found for this session.</div>`;
+            }
+
+            return `
+                <div class="record-row-header">
+                    <div>Student Name</div>
+                    <div>Register Number</div>
+                    <div>Time</div>
+                </div>
+                ${records.map((r, i) => `
+                    <div class="record-row">
+                        <div>
+                            <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: rgba(74,222,128,0.15); color: var(--primary); font-weight: 700; font-size: 0.75rem; margin-right: 0.5rem;">${i + 1}</span>
+                            <strong>${r.student_name || '—'}</strong>
+                        </div>
+                        <div style="color: var(--text-secondary);">${r.register_number || '—'}</div>
+                        <div>
+                            <span class="badge badge-success">${r.timestamp ? UI.formatTime(r.timestamp) : '—'}</span>
+                        </div>
+                    </div>
+                `).join('')}
+                <div style="padding: 0.75rem 1.5rem; background: rgba(74,222,128,0.05); border-top: 1px solid var(--border);">
+                    <small style="color: var(--text-secondary);">✅ <strong style="color: var(--primary);">${records.length}</strong> students marked present</small>
+                </div>
+            `;
+        }
+
+        function renderAllRecords(records) {
+            const container = document.getElementById('records-container');
+
+            if (records.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state" style="padding: 3rem;">
+                        <div class="empty-state-icon">📭</div>
+                        <h3>No records found</h3>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Date</th>
+                                <th>Section</th>
+                                <th>Subject</th>
+                                <th>Time Slot</th>
+                                <th>Student</th>
+                                <th>Reg. No.</th>
+                                <th>Recorded</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${records.map((r, i) => `
+                                <tr>
+                                    <td style="color: var(--text-secondary); font-size: 0.8rem;">${i + 1}</td>
+                                    <td><strong>${r.date || '—'}</strong></td>
+                                    <td><span class="badge badge-info">${r.section || '—'}</span></td>
+                                    <td>${r.subject || '—'}</td>
+                                    <td>${r.class_time || '—'}</td>
+                                    <td>${r.student_name || '—'}</td>
+                                    <td style="color: var(--text-secondary);">${r.register_number || '—'}</td>
+                                    <td>${r.timestamp ? UI.formatTime(r.timestamp) : '—'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function switchView(view) {
+            currentView = view;
+            document.getElementById('sessions-view').style.display = view === 'sessions' ? 'block' : 'none';
+            document.getElementById('records-view').style.display = view === 'records' ? 'block' : 'none';
+            document.getElementById('btn-sessions').classList.toggle('active', view === 'sessions');
+            document.getElementById('btn-records').classList.toggle('active', view === 'records');
+        }
+
+        async function refreshData() {
+            // Clear cache
+            Object.keys(sessionDetailCache).forEach(k => delete sessionDetailCache[k]);
+            await loadData();
+        }
+    </script>
+</body>
+
+</html>

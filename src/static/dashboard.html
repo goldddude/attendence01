@@ -22,6 +22,7 @@
                     <a href="index.html" class="nav-link">Overview</a>
                     <a href="dashboard.html" class="nav-link active">Statistics</a>
                     <a href="students.html" class="nav-link">Students</a>
+                    <a href="attendance-records.html" class="nav-link">Records</a>
                     <a href="scan-attendance.html" class="nav-link">Scan</a>
                 </nav>
             </div>
@@ -97,8 +98,8 @@
                 <!-- Students by Gender -->
                 <div class="card">
                     <div class="card-header">
-                        <h3 class="card-title">Students by Gender</h3>
-                        <p class="card-subtitle">Gender distribution</p>
+                        <h3 class="card-title">Attendance by Subject</h3>
+                        <p class="card-subtitle">Total records per subject</p>
                     </div>
                     <div class="chart-container" style="height: 250px;">
                         <canvas id="genderChart"></canvas>
@@ -210,18 +211,26 @@
             }
         }
 
-        function createAttendanceChart() {
+        async function createAttendanceChart() {
             const ctx = document.getElementById('attendanceChart').getContext('2d');
 
-            // Generate last 7 days
+            // Build last 7 days labels
             const dates = [];
-            const data = [];
+            const dateKeys = [];
             for (let i = 6; i >= 0; i--) {
                 const date = new Date();
                 date.setDate(date.getDate() - i);
                 dates.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-                data.push(Math.floor(Math.random() * 20) + 30);
+                dateKeys.push(date.toISOString().split('T')[0]);
             }
+
+            // Fetch real attendance data for each day
+            const data = await Promise.all(dateKeys.map(async (d) => {
+                try {
+                    const res = await APIClient.request(`/api/attendance/date?date=${d}`);
+                    return res.count || 0;
+                } catch { return 0; }
+            }));
 
             attendanceChart = new Chart(ctx, {
                 type: 'line',
@@ -260,7 +269,7 @@
                         y: {
                             beginAtZero: true,
                             grid: { color: '#374151', drawBorder: false },
-                            ticks: { color: '#94a3b8' }
+                            ticks: { color: '#94a3b8', stepSize: 1 }
                         },
                         x: {
                             grid: { display: false },
@@ -271,52 +280,88 @@
             });
         }
 
-        function createGenderChart() {
+        async function createSubjectChart() {
             const ctx = document.getElementById('genderChart').getContext('2d');
 
-            genderChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Male', 'Female'],
-                    datasets: [{
-                        data: [55, 45],
-                        backgroundColor: ['#1e293b', '#4ade80'],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { color: '#94a3b8', padding: 15, font: { size: 12 } }
+            try {
+                const data = await APIClient.getAttendanceSessions();
+                const sessions = data.sessions || [];
+
+                const subjectCounts = {};
+                sessions.forEach(s => {
+                    if (s.subject) subjectCounts[s.subject] = (subjectCounts[s.subject] || 0) + s.student_count;
+                });
+
+                const subjects = Object.keys(subjectCounts);
+                const counts = subjects.map(s => subjectCounts[s]);
+
+                if (subjects.length === 0) {
+                    document.getElementById('genderChart').closest('.card').querySelector('.card-subtitle').textContent = 'No attendance data yet';
+                    return;
+                }
+
+                genderChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: subjects,
+                        datasets: [{
+                            data: counts,
+                            backgroundColor: ['#4ade80', '#22c55e', '#16a34a', '#86efac', '#bbf7d0', '#dcfce7', '#15803d'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { color: '#94a3b8', padding: 10, font: { size: 11 } }
+                            }
                         }
                     }
-                }
-            });
+                });
+            } catch (error) {
+                console.error('Failed to create subject chart:', error);
+            }
         }
 
         async function loadTopAttendees() {
             const container = document.getElementById('top-attendees');
 
             try {
-                const studentsData = await APIClient.getStudents();
-                const students = studentsData.students.slice(0, 6);
+                // Get sessions and aggregate attendance count per student
+                const data = await APIClient.request('/api/attendance/all?limit=1000');
+                const records = data.attendance || [];
 
-                if (students.length === 0) {
-                    container.innerHTML = '<p class="text-secondary text-center" style="padding: 2rem;">No students yet</p>';
+                if (records.length === 0) {
+                    container.innerHTML = '<p class="text-secondary text-center" style="padding: 2rem;">No attendance recorded yet</p>';
                     return;
                 }
 
-                container.innerHTML = students.map(student => `
+                // Count per student
+                const counts = {};
+                const names = {};
+                const regs = {};
+                records.forEach(r => {
+                    const id = r.student_id;
+                    counts[id] = (counts[id] || 0) + 1;
+                    names[id] = r.student_name;
+                    regs[id] = r.register_number;
+                });
+
+                const top6 = Object.entries(counts)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 6);
+
+                container.innerHTML = top6.map(([id, count]) => `
                     <div class="top-list-item">
-                        <div class="top-list-avatar">${student.name.charAt(0)}</div>
+                        <div class="top-list-avatar">${(names[id] || '?').charAt(0)}</div>
                         <div class="top-list-info">
-                            <div class="top-list-name">${student.name}</div>
-                            <div class="top-list-detail">${student.register_number}</div>
+                            <div class="top-list-name">${names[id] || '—'}</div>
+                            <div class="top-list-detail">${regs[id] || '—'}</div>
                         </div>
-                        <div class="top-list-value">${Math.floor(Math.random() * 10) + 20} days</div>
+                        <div class="top-list-value">${count} session${count !== 1 ? 's' : ''}</div>
                     </div>
                 `).join('');
 
@@ -332,6 +377,12 @@
                 const studentsData = await APIClient.getStudents();
                 const students = studentsData.students;
 
+                if (students.length === 0) {
+                    document.getElementById('classChart').closest('.card').innerHTML +=
+                        '<p class="text-secondary text-center" style="padding:1rem;">No students added yet</p>';
+                    return;
+                }
+
                 const sectionCounts = {};
                 students.forEach(student => {
                     sectionCounts[student.section] = (sectionCounts[student.section] || 0) + 1;
@@ -343,10 +394,10 @@
                 classChart = new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: sections.length > 0 ? sections : ['A', 'B', 'C'],
+                        labels: sections,
                         datasets: [{
                             label: 'Students',
-                            data: counts.length > 0 ? counts : [12, 19, 15],
+                            data: counts,
                             backgroundColor: '#4ade80',
                             borderRadius: 8,
                             barThickness: 40
@@ -360,7 +411,7 @@
                             y: {
                                 beginAtZero: true,
                                 grid: { color: '#374151', drawBorder: false },
-                                ticks: { color: '#94a3b8', stepSize: 5 }
+                                ticks: { color: '#94a3b8', stepSize: 1 }
                             },
                             x: {
                                 grid: { display: false },
@@ -420,7 +471,7 @@
         // Initialize dashboard
         loadStats();
         createAttendanceChart();
-        createGenderChart();
+        createSubjectChart();
         loadTopAttendees();
         createClassChart();
         loadRecentAttendance();
